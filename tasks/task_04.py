@@ -1,19 +1,26 @@
 """Task 04 — Next version (SemVer & Commits)
 
 Функція next_version(current_version: str, commits: list[str]) -> str
-Парсить SemVer у форматі MAJOR.MINOR.PATCH і інкрементує згідно правил:
-- Якщо є breaking change (рядок містить "BREAKING" або починається з "feat!" або має "!:"), то MAJOR++
-- Інакше якщо є commit, який починається з "feat" -> MINOR++
-- Інакше якщо є commit, який починається з "fix" або "perf" -> PATCH++
-- Інакше PATCH++ (щоб бути консервативним)
-
-На некоректний формат версії кидає ValueError("Invalid version").
-На некоректний commits кидає ValueError("Invalid commits").
+Підтримує валідацію повідомлень комітів: якщо повідомлення не має
+очікуваного префіксу (feat, fix, docs, perf, chore, refactor, style)
+або не містить індикатора BREAKING, то кидає ValueError з текстом
+'Некоректне повідомлення: {msg}'.
 """
 import re
 from typing import List
 
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+COMM_RE = re.compile(r"^(feat|fix|docs|perf|chore|refactor|style)(!:|\(|:)")
+
+# The above COMM_RE is intentionally simple; we'll use a more flexible check below
+TYPE_RE = re.compile(r"^(feat|fix|docs|perf|chore|refactor|style)(?:\([^)]*\))?(!)?:")
+
+
+def _is_valid_commit_message(msg: str) -> bool:
+    if "BREAKING" in msg or "!:" in msg or msg.startswith("feat!"):
+        return True
+    # conventional commits like 'feat(api): ...' or 'fix: ...'
+    return bool(re.match(r"^(feat|fix|docs|perf|chore|refactor|style)(?:\([^)]*\))?:", msg))
 
 
 def next_version(current_version: str, commits: List[str]) -> str:
@@ -28,7 +35,6 @@ def next_version(current_version: str, commits: List[str]) -> str:
 
     major, minor, patch = map(int, m.groups())
 
-    # detect breaking
     breaking = False
     has_feat = False
     has_fix = False
@@ -36,6 +42,9 @@ def next_version(current_version: str, commits: List[str]) -> str:
     for c in commits:
         if not isinstance(c, str):
             raise ValueError("Invalid commits")
+        if not _is_valid_commit_message(c):
+            # Повертаємо українське повідомлення помилки відповідно до тестів
+            raise ValueError(f"Некоректне повідомлення: {c}")
         if "BREAKING" in c or c.startswith("feat!") or "!:" in c:
             breaking = True
             break
@@ -52,7 +61,6 @@ def next_version(current_version: str, commits: List[str]) -> str:
         minor += 1
         patch = 0
     else:
-        # if any fix or none of the other rules, bump patch
         patch += 1
 
     return f"{major}.{minor}.{patch}"
