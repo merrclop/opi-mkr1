@@ -1,0 +1,4 @@
+Pytest result: all tests passed (run locally)
+
+Command: pytest -q
+Output: ........................................
