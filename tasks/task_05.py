@@ -1,8 +1,7 @@
-"""Task 05 — План спринту (текстовий звіт)
+"""Task 05 adjustment — fix sprint selection behaviour
 
-Функція sprint_plan(tasks: list[tuple[str,int]], velocity_history: list[int]) -> str
-Повертає форматований звіт українською мовою.
-При пустій історії швидкості кидає ValueError('Некоректна історія швидкості').
+Updated sprint_plan to stop filling sprint when a task doesn't fit
+(unless that task must be split because it exceeds capacity).
 """
 from typing import List, Tuple
 import math
@@ -19,25 +18,26 @@ def sprint_plan(tasks: List[Tuple[str, int]], velocity_history: List[int]) -> st
         if not (isinstance(t, tuple) and len(t) == 2 and isinstance(t[0], str) and isinstance(t[1], (int, float))):
             raise ValueError("Некоректні дані")
 
-    # Місткість — округлена середня швидкість
     avg = sum(velocity_history) / len(velocity_history)
     capacity = int(round(avg))
 
-    # Сформувати список завдань, які вміщаються у спринт, у вхідному порядку
     in_sprint = []
     in_sprint_points = 0
     to_split = []
 
-    for name, points in tasks:
-        points = int(points)
-        if points > capacity:
+    for name, pts in tasks:
+        pts = int(pts)
+        if pts > capacity:
             to_split.append(name)
+            # continue to consider following tasks
             continue
-        if in_sprint_points + points <= capacity:
+        if in_sprint_points + pts <= capacity:
             in_sprint.append(name)
-            in_sprint_points += points
+            in_sprint_points += pts
+            continue
+        # if task fits individually but would exceed remaining capacity -> stop considering further tasks
+        break
 
-    # Підрахувати скільки спринтів потрібно для завершення готових пунктів (без тих, що потребують розбиття)
     total_points_ready = sum(int(p) for (n, p) in tasks if n not in to_split)
     sprints_needed = 0
     if capacity > 0:
